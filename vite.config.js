@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/EcoPoint/', // 👈 isso aqui é essencial!
+  base: '/EcoPoint/', // ESSENCIAL!
   plugins: [react(), tailwindcss()],
 })
