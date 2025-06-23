@@ -114,7 +114,7 @@ const empresasColeta = [
 ];
 
 const App = () => {
-  const [currentLocationName, setCurrentLocationName] = useState("Tianguá, CE");
+  const [currentLocationName, setCurrentLocationName] = useState("Tianguá");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [mapCenter, setMapCenter] = useState([-3.7333, -40.9919]);
