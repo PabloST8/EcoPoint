@@ -21,6 +21,8 @@ import {
   User,
   Settings,
   LogOut,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const ChangeMapCenter = ({ center }) => {
@@ -441,6 +443,70 @@ const App = () => {
     fetchRoute();
   }, [selectedEmpresa]);
 
+  // Notificações de exemplo
+  const [notificacoes, setNotificacoes] = useState([
+    {
+      id: 1,
+      titulo: "Parabéns! Você ganhou 40 pontos",
+      resumo: "Sua reciclagem de plástico foi registrada.",
+      texto:
+        "Sua reciclagem de 2kg de plástico foi registrada com sucesso no ponto EcoRecicla. Continue reciclando para acumular mais pontos e trocar por recompensas!",
+      aberta: false,
+      data: "22/06/2025 10:12",
+    },
+    {
+      id: 2,
+      titulo: "Ranking atualizado",
+      resumo: "Você subiu para 4º lugar entre seus amigos.",
+      texto:
+        "Continue reciclando para subir ainda mais no ranking e desafiar seus amigos! Veja o ranking completo na aba Registro.",
+      aberta: false,
+      data: "21/06/2025 18:40",
+    },
+    {
+      id: 3,
+      titulo: "Cupom resgatado!",
+      resumo: "Seu cupom Americanas foi enviado por e-mail.",
+      texto:
+        "Use o código recebido para garantir R$20 de desconto em sua próxima compra na Americanas. Aproveite!",
+      aberta: false,
+      data: "20/06/2025 14:05",
+    },
+    {
+      id: 4,
+      titulo: "Nova rota de coleta disponível",
+      resumo: "A empresa Verde Vida atualizou sua rota.",
+      texto:
+        "Agora a coleta de eletrônicos e metais passa no seu bairro às quartas-feiras. Veja detalhes no mapa ou na aba Pontos de Coleta.",
+      aberta: false,
+      data: "19/06/2025 09:30",
+    },
+    {
+      id: 5,
+      titulo: "Meta próxima de ser atingida!",
+      resumo: "Faltam apenas 150 pontos para sua próxima recompensa.",
+      texto:
+        "Continue reciclando para atingir sua meta e trocar por cupons, produtos ou experiências exclusivas.",
+      aberta: false,
+      data: "18/06/2025 16:20",
+    },
+    {
+      id: 6,
+      titulo: "Bem-vindo ao EcoPoint!",
+      resumo: "Sua conta foi criada com sucesso.",
+      texto:
+        "Explore o app, registre reciclagens, acompanhe seu progresso e desafie amigos para tornar o mundo mais sustentável.",
+      aberta: false,
+      data: "17/06/2025 08:00",
+    },
+  ]);
+
+  const toggleNotificacao = (id) => {
+    setNotificacoes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, aberta: !n.aberta } : n))
+    );
+  };
+
   return (
     <main
       className={`flex flex-col h-screen overflow-hidden relative transition-colors duration-300 ${
@@ -479,6 +545,10 @@ const App = () => {
           className={`${
             darkMode ? "text-green-300" : "text-green-600"
           } m-2 stroke-3`}
+          onClick={() => {
+            setActivePage("Notificações");
+            setMenuOpen(false);
+          }}
         />
       </nav>
 
@@ -1941,6 +2011,94 @@ const App = () => {
               >
                 Fale conosco
               </button>
+            </div>
+          </div>
+        )}
+        {activePage === "Notificações" && (
+          <div
+            className={`p-2 sm:p-4 md:p-8 flex-1 flex flex-col gap-6 overflow-y-auto h-full transition-colors duration-300
+              ${
+                darkMode
+                  ? "bg-neutral-900 text-neutral-100"
+                  : "bg-green-50 text-green-900"
+              }
+            `}
+          >
+            <h2
+              className={`text-2xl font-bold mb-4 text-center ${
+                darkMode ? "text-green-300" : "text-green-800"
+              }`}
+            >
+              Notificações
+            </h2>
+            <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+              {notificacoes.map((n) => (
+                <div
+                  key={n.id}
+                  className={`rounded-2xl shadow-md border p-4 flex flex-col gap-2 transition-all duration-300
+                    ${
+                      darkMode
+                        ? "bg-neutral-800 border-green-700"
+                        : "bg-white border-green-100"
+                    }
+                  `}
+                >
+                  <div
+                    className="flex items-center justify-between gap-2 cursor-pointer"
+                    onClick={() => toggleNotificacao(n.id)}
+                  >
+                    <div className="flex flex-col">
+                      <span
+                        className={`font-bold text-base sm:text-lg ${
+                          darkMode ? "text-green-200" : "text-green-700"
+                        }`}
+                      >
+                        {n.titulo}
+                      </span>
+                      <span
+                        className={`text-sm ${
+                          darkMode ? "text-green-400" : "text-gray-600"
+                        }`}
+                      >
+                        {n.resumo}
+                      </span>
+                    </div>
+                    <button
+                      className={`rounded-full p-2 transition-colors duration-300 focus:outline-none
+                        ${
+                          darkMode
+                            ? "text-green-300 hover:bg-green-900"
+                            : "text-green-700 hover:bg-green-100"
+                        }`}
+                      aria-label={
+                        n.aberta ? "Fechar notificação" : "Abrir notificação"
+                      }
+                    >
+                      {n.aberta ? (
+                        <ChevronUp size={22} />
+                      ) : (
+                        <ChevronDown size={22} />
+                      )}
+                    </button>
+                  </div>
+                  <span
+                    className={`text-xs mt-1 ${
+                      darkMode ? "text-neutral-400" : "text-gray-400"
+                    }`}
+                  >
+                    {n.data}
+                  </span>
+                  {n.aberta && (
+                    <div
+                      className={`mt-2 text-sm ${
+                        darkMode ? "text-green-100" : "text-gray-800"
+                      }`}
+                    >
+                      {n.texto}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
