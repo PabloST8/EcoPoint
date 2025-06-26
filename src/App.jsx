@@ -24,6 +24,10 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import Login from "./Login";
+import Register from "./Register";
+import { getUserDataFromStorage } from "./utils/storage";
+import { QrReader } from "react-qr-reader";
 
 const ChangeMapCenter = ({ center }) => {
   const map = useMap();
@@ -37,7 +41,7 @@ const empresasColeta = [
     nome: "EcoRecicla",
     descricao:
       "Coleta seletiva de papel, plástico e vidro. Atende bairros centrais.",
-    foto: "https://images.unsplash.com/photo-1586773860414-0c7f1cb4a4a0?auto=format&fit=crop&w=400&q=80",
+    foto: "src/assets/ChatGPT Image 24_06_2025, 08_35_02.png",
     local: "Rua das Flores, 123",
     geocode: [-3.733, -40.991],
     rota: [
@@ -68,7 +72,7 @@ const empresasColeta = [
     nome: "Verde Vida",
     descricao:
       "Especializada em coleta de eletrônicos e metais. Atendimento em toda a cidade.",
-    foto: "https://images.unsplash.com/photo-1508873699372-7aeab60b44c9?auto=format&fit=crop&w=400&q=80",
+    foto: "src/assets/ChatGPT Image 24_06_2025, 08_56_09.png",
     local: "Av. Central, 456",
     geocode: [-3.73, -40.997],
     rota: [
@@ -90,7 +94,7 @@ const empresasColeta = [
     nome: "ReciclaFácil",
     descricao:
       "Coleta de resíduos orgânicos e óleo de cozinha. Rota semanal nos bairros.",
-    foto: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80",
+    foto: "src/assets/ChatGPT Image 24_06_2025, 09_33_30.png",
     local: "Praça Verde, 789",
     geocode: [-3.72, -40.987],
     rota: [
@@ -123,6 +127,14 @@ const App = () => {
   const [activePage, setActivePage] = useState("Início");
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [user, setUser] = useState(() => getUserDataFromStorage());
+  const [userData, setUserData] = useState(() => getUserDataFromStorage());
+  const [themeMode, setThemeMode] = useState(() => {
+    const saved = localStorage.getItem("themeMode");
+    return saved || "auto"; // 'auto', 'dark', 'light'
+  });
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [setQrResult] = useState(null);
 
   // refs para markers
   const markerRefs = useRef({});
@@ -158,14 +170,18 @@ const App = () => {
     }
   }, [selectedEmpresa]);
 
-  // Aplica/remover classe dark no body
+  // Detecta tema do sistema e salva preferência do usuário
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
+    if (themeMode === "auto") {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      setDarkMode(prefersDark);
     } else {
-      document.documentElement.classList.remove("dark");
+      setDarkMode(themeMode === "dark");
     }
-  }, [darkMode]);
+    localStorage.setItem("themeMode", themeMode);
+  }, [themeMode]);
 
   const customIcon = new Icon({
     iconUrl:
@@ -211,12 +227,6 @@ const App = () => {
   };
 
   const [empresaDetalhe, setEmpresaDetalhe] = useState(null);
-
-  const empresaFotos = [
-    "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80",
-    "https://images.unsplash.com/photo-1508873699372-7aeab60b44c9?auto=format&fit=crop&w=400&q=80",
-    "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80",
-  ];
 
   const closeEmpresaDetalhe = () => {
     setEmpresaDetalhe(null);
@@ -299,8 +309,7 @@ const App = () => {
     );
   };
 
-  const [fotoIndex, setFotoIndex] = useState(0);
-  const verMaisFotos = () => setFotoIndex((i) => (i + 1) % empresaFotos.length);
+  const verMaisFotos = () => {};
 
   // Corrigir overlay de detalhes para dark mode
   const EmpresaDetalheOverlay = ({ empresa, onClose }) => (
@@ -334,9 +343,9 @@ const App = () => {
         </button>
         <div className="flex flex-col items-center gap-3">
           <img
-            src={empresaFotos[fotoIndex]}
-            alt="Foto coleta"
-            className={`w-32 h-32 rounded-lg object-cover border-2 shadow transition-colors duration-300
+            src={empresa.foto}
+            alt={empresa.nome}
+            className={`w-32 h-32 rounded-lg object-contain border-2 shadow transition-colors duration-300
               ${darkMode ? "border-green-900" : "border-green-200"}`}
           />
           <button
@@ -507,6 +516,56 @@ const App = () => {
     );
   };
 
+  // Carrega dados do usuário ao logar
+  useEffect(() => {
+    const local = getUserDataFromStorage();
+    setUser(local);
+    setUserData(local);
+  }, []);
+
+  const handleMenuItemClick = (item) => {
+    if (item.text === "Sair") {
+      // Remover Firebase: apenas limpar estados e localStorage
+      setUser(null);
+      setUserData(null);
+      localStorage.removeItem("userData"); // Limpa dados persistidos
+      setMenuOpen(false);
+      return;
+    }
+    setActivePage(item.text);
+    setMenuOpen(false);
+  };
+
+  const [showRegister, setShowRegister] = useState(false);
+
+  if (!user) {
+    if (showRegister) {
+      return (
+        <Register
+          onSwitchToLogin={() => setShowRegister(false)}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+        />
+      );
+    }
+    return (
+      <Login
+        onLogin={() => {
+          const local = getUserDataFromStorage();
+          setUser(local);
+          setUserData(local);
+        }}
+        onSwitchToRegister={() => setShowRegister(true)}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        themeMode={themeMode}
+        setThemeMode={setThemeMode}
+      />
+    );
+  }
+
   return (
     <main
       className={`flex flex-col h-screen overflow-hidden relative transition-colors duration-300 ${
@@ -605,7 +664,7 @@ const App = () => {
               >
                 {searchResults.map((result) => (
                   <li
-                    key={result.place_id}
+                    key={result.place_id || result.display_name}
                     onClick={() =>
                       handleSelectLocation(
                         result.lat,
@@ -737,7 +796,7 @@ const App = () => {
                   <img
                     src={empresa.foto}
                     alt={empresa.nome}
-                    className={`w-full h-40 object-cover rounded-xl border-2 mb-4 group-hover:scale-105 transition-transform
+                    className={`w-full h-40 object-contain rounded-xl border-2 mb-4 group-hover:scale-105 transition-transform
                       ${darkMode ? "border-green-900" : "border-green-200"}`}
                   />
                   <span
@@ -848,7 +907,7 @@ const App = () => {
                     darkMode ? "text-green-400" : "text-green-700"
                   }`}
                 >
-                  2.350
+                  {userData?.pontos || 0}
                 </span>
                 <span
                   className={`text-xs ${
@@ -871,7 +930,10 @@ const App = () => {
                     darkMode ? "text-green-200" : "text-green-600"
                   }`}
                 >
-                  3.000 pts
+                  {userData?.metaPontos
+                    ? userData.metaPontos - (userData?.pontos || 0)
+                    : "Defina uma meta"}{" "}
+                  pts
                 </span>
                 <div
                   className={`w-24 sm:w-32 h-2.5 sm:h-3 rounded-full overflow-hidden mt-1 ${
@@ -880,7 +942,14 @@ const App = () => {
                 >
                   <div
                     className={`h-full bg-gradient-to-r from-green-400 to-green-600`}
-                    style={{ width: "78%" }}
+                    style={{
+                      width: `${
+                        userData?.metaPontos
+                          ? ((userData?.pontos || 0) / userData.metaPontos) *
+                            100
+                          : 0
+                      }%`,
+                    }}
                   ></div>
                 </div>
                 <span
@@ -894,9 +963,17 @@ const App = () => {
                       darkMode ? "text-green-400" : "text-green-700"
                     }`}
                   >
-                    650 pts
+                    {userData?.metaPontos
+                      ? userData.metaPontos - (userData?.pontos || 0)
+                      : "Defina uma meta"}{" "}
+                    pts
                   </span>
                 </span>
+                {(!userData?.metaPontos || userData.metaPontos <= 0) && (
+                  <span className="text-xs text-red-400 mt-1">
+                    Defina uma meta de pontos no seu perfil!
+                  </span>
+                )}
               </div>
               <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1">
                 <span
@@ -911,7 +988,7 @@ const App = () => {
                     darkMode ? "text-green-200" : "text-green-600"
                   }`}
                 >
-                  5
+                  {userData?.cupons?.length || 0}
                 </span>
                 <span
                   className={`text-base sm:text-lg mt-1 sm:mt-2 ${
@@ -925,7 +1002,7 @@ const App = () => {
                     darkMode ? "text-green-200" : "text-green-600"
                   }`}
                 >
-                  2
+                  {userData?.produtos?.length || 0}
                 </span>
               </div>
             </div>
@@ -948,11 +1025,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://logodownload.org/wp-content/uploads/2019/09/americanas-logo-0.png"
-                    alt="Cupom Americanas"
-                    className="w-20 sm:w-24 h-10 sm:h-12 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -995,11 +1067,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://logodownload.org/wp-content/uploads/2017/11/ifood-logo-1.png"
-                    alt="Cupom iFood"
-                    className="w-16 sm:w-20 h-8 sm:h-10 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1042,11 +1109,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://logodownload.org/wp-content/uploads/2017/11/pao-de-acucar-logo-0.png"
-                    alt="Cupom Pão de Açúcar"
-                    className="w-16 sm:w-20 h-8 sm:h-10 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1089,11 +1151,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=200&q=80"
-                    alt="Garrafa Ecológica OMO"
-                    className="w-16 sm:w-20 h-16 sm:h-20 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1136,11 +1193,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://www.natura.com.br/static/imgs/natura-logo.png"
-                    alt="Kit Natura Ekos"
-                    className="w-16 sm:w-20 h-8 sm:h-10 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1183,11 +1235,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://www.sesc-ce.com.br/wp-content/uploads/2022/06/centro-de-reciclagem.jpg"
-                    alt="Visita Reciclagem"
-                    className="w-20 sm:w-24 h-12 sm:h-16 mb-2 sm:mb-3 object-cover rounded group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1230,11 +1277,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/WWF_logo.svg/2560px-WWF_logo.svg.png"
-                    alt="Doação WWF"
-                    className="w-16 sm:w-20 h-8 sm:h-12 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1277,11 +1319,6 @@ const App = () => {
                       : "bg-white border-green-100 text-green-900"
                   }`}
                 >
-                  <img
-                    src="https://sosma.org.br/wp-content/themes/sosma/assets/images/logo-sosma.svg"
-                    alt="Doação SOS Mata Atlântica"
-                    className="w-16 sm:w-20 h-8 sm:h-10 mb-2 sm:mb-3 object-contain group-hover:scale-110 transition-transform"
-                  />
                   <span
                     className={`text-lg sm:text-xl font-bold mb-1 text-center ${
                       darkMode ? "text-green-200" : "text-green-700"
@@ -1389,10 +1426,37 @@ const App = () => {
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-green-600 hover:bg-green-700 text-white"
                 }`}
+                onClick={() => setShowQrScanner(true)}
               >
                 <ScanQrCode size={48} />
                 Escanear QR Code
               </button>
+
+              {showQrScanner && (
+                <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50">
+                  <button
+                    className="absolute top-4 right-4 text-white text-2xl"
+                    onClick={() => setShowQrScanner(false)}
+                  >
+                    ✕
+                  </button>
+                  <QrReader
+                    constraints={{ facingMode: "environment" }}
+                    onResult={(result) => {
+                      if (result) {
+                        setQrResult(result?.text);
+                        setShowQrScanner(false);
+                        // Aqui você pode tratar o resultado do QR (ex: registrar reciclagem)
+                      }
+                    }}
+                    style={{ width: "300px" }}
+                  />
+                  <span className="text-white mt-4">
+                    Aponte a câmera para o QR Code
+                  </span>
+                </div>
+              )}
+
               <span
                 className={`text-center text-sm ${
                   darkMode ? "text-neutral-300" : "text-gray-600"
@@ -1412,139 +1476,59 @@ const App = () => {
                 Seu histórico
               </h3>
               <div className="flex flex-col gap-3">
-                {/* Exemplo de histórico, pode ser dinâmico depois */}
-                <div
-                  className={`flex items-center gap-3 rounded-xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-neutral-800 border-neutral-700"
-                      : "bg-white border-green-100"
-                  }`}
-                >
-                  <span className="bg-green-100 rounded-full p-2">
-                    <img
-                      src="https://cdn-icons-png.flaticon.com/512/1046/1046857.png"
-                      alt="Plástico"
-                      className="w-6 h-6"
-                    />
+                {userData?.historico && userData.historico.length > 0 ? (
+                  userData.historico.map((item) => (
+                    <div
+                      key={item.id || item.data + item.tipo + item.pontos}
+                      className={`flex items-center gap-3 rounded-xl shadow p-3 border transition-colors duration-300
+                ${
+                  darkMode
+                    ? "bg-neutral-800 border-neutral-700"
+                    : "bg-white border-green-100"
+                }`}
+                    >
+                      <span className="bg-green-100 rounded-full p-2">
+                        <img
+                          src={item.icone}
+                          alt={item.tipo}
+                          className="w-6 h-6"
+                        />
+                      </span>
+                      <span
+                        className={`font-semibold ${
+                          darkMode ? "text-green-200" : "text-green-800"
+                        }`}
+                      >
+                        {item.tipo}
+                      </span>
+                      <span
+                        className={`text-sm ${
+                          darkMode ? "text-green-400" : "text-gray-500"
+                        }`}
+                      >
+                        {item.quantidade}
+                      </span>
+                      <span
+                        className={`ml-auto font-bold ${
+                          darkMode ? "text-green-400" : "text-green-600"
+                        }`}
+                      >
+                        +{item.pontos} pts
+                      </span>
+                      <span
+                        className={`text-xs ml-2 ${
+                          darkMode ? "text-neutral-400" : "text-gray-400"
+                        }`}
+                      >
+                        {item.data}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-center text-sm opacity-60 py-4">
+                    Nenhum registro encontrado.
                   </span>
-                  <span
-                    className={`font-semibold ${
-                      darkMode ? "text-green-200" : "text-green-800"
-                    }`}
-                  >
-                    Plástico
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      darkMode ? "text-green-400" : "text-gray-500"
-                    }`}
-                  >
-                    2 kg
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    +40 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    22/06/2025
-                  </span>
-                </div>
-                <div
-                  className={`flex items-center gap-3 rounded-xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-neutral-800 border-neutral-700"
-                      : "bg-white border-green-100"
-                  }`}
-                >
-                  <span className="bg-green-100 rounded-full p-2">
-                    <img
-                      src="https://cdn-icons-png.flaticon.com/512/190/190406.png"
-                      alt="Papel"
-                      className="w-6 h-6"
-                    />
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      darkMode ? "text-green-200" : "text-green-800"
-                    }`}
-                  >
-                    Papel
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      darkMode ? "text-green-400" : "text-gray-500"
-                    }`}
-                  >
-                    1 kg
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    +20 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    20/06/2025
-                  </span>
-                </div>
-                <div
-                  className={`flex items-center gap-3 rounded-xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-neutral-800 border-neutral-700"
-                      : "bg-white border-green-100"
-                  }`}
-                >
-                  <span className="bg-green-100 rounded-full p-2">
-                    <img
-                      src="https://cdn-icons-png.flaticon.com/512/1046/1046876.png"
-                      alt="Vidro"
-                      className="w-6 h-6"
-                    />
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      darkMode ? "text-green-200" : "text-green-800"
-                    }`}
-                  >
-                    Vidro
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      darkMode ? "text-green-400" : "text-gray-500"
-                    }`}
-                  >
-                    3 kg
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    +60 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    18/06/2025
-                  </span>
-                </div>
+                )}
               </div>
             </div>
             {/* Ranking de amigos */}
@@ -1557,150 +1541,90 @@ const App = () => {
                 Ranking entre amigos
               </h3>
               <div className="flex flex-col gap-3">
-                {/* 1º lugar - destaque */}
-                <div
-                  className={`flex items-center gap-3 rounded-2xl shadow-lg p-4 border-2 scale-105 transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-gradient-to-r from-green-900 to-green-700 border-green-500"
-                      : "bg-gradient-to-r from-green-300 to-green-100 border-green-500"
-                  }`}
-                >
-                  <span className="relative">
-                    <img
-                      src="https://randomuser.me/api/portraits/men/32.jpg"
-                      alt="Lucas"
-                      className="w-14 h-14 rounded-full border-4 border-yellow-400 shadow-lg"
-                    />
-                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-white font-bold rounded-full px-2 py-0.5 text-xs shadow">
-                      1º
-                    </span>
-                  </span>
-                  <div className="flex flex-col">
-                    <span
-                      className={`font-bold text-lg ${
-                        darkMode ? "text-green-200" : "text-green-900"
-                      }`}
+                {(() => {
+                  // Monta lista de ranking: usuário + amigos
+                  const ranking = [
+                    {
+                      ...userData,
+                      nome: userData?.nome || "Você",
+                      foto:
+                        userData?.foto ||
+                        "https://randomuser.me/api/portraits/lego/1.jpg",
+                      pontos: userData?.pontos || 0,
+                      isUser: true,
+                    },
+                    ...(userData?.amigos || []).map((amigo) => ({
+                      ...amigo,
+                      isUser: false,
+                    })),
+                  ].sort((a, b) => (b.pontos || 0) - (a.pontos || 0));
+                  return ranking.map((item, idx) => (
+                    <div
+                      key={item.email || item.nome || idx}
+                      className={`flex items-center gap-3 rounded-2xl shadow-lg p-4 border-2 transition-colors duration-300
+                ${
+                  idx === 0
+                    ? darkMode
+                      ? "bg-gradient-to-r from-green-900 to-green-700 border-green-500 scale-105"
+                      : "bg-gradient-to-r from-green-300 to-green-100 border-green-500 scale-105"
+                    : darkMode
+                    ? "bg-neutral-800 border-neutral-700"
+                    : "bg-white border-green-100"
+                }`}
                     >
-                      Lucas Silva
-                    </span>
-                    <span
-                      className={`text-sm ${
-                        darkMode ? "text-green-400" : "text-green-700"
-                      }`}
-                    >
-                      1.850 pts
-                    </span>
-                  </div>
-                </div>
-                {/* 2º lugar */}
-                <div
-                  className={`flex items-center gap-3 rounded-2xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-neutral-800 border-neutral-700"
-                      : "bg-white border-green-100"
-                  }`}
-                >
-                  <img
-                    src="https://randomuser.me/api/portraits/women/44.jpg"
-                    alt="Ana"
-                    className="w-10 h-10 rounded-full border-2 border-gray-200"
-                  />
-                  <span
-                    className={`font-bold ${
-                      darkMode ? "text-green-200" : "text-green-800"
-                    }`}
-                  >
-                    Ana Souza
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    1.320 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    2º
-                  </span>
-                </div>
-                {/* 3º lugar */}
-                <div
-                  className={`flex items-center gap-3 rounded-2xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-neutral-800 border-neutral-700"
-                      : "bg-white border-green-100"
-                  }`}
-                >
-                  <img
-                    src="https://randomuser.me/api/portraits/men/65.jpg"
-                    alt="Pedro"
-                    className="w-10 h-10 rounded-full border-2 border-gray-200"
-                  />
-                  <span
-                    className={`font-bold ${
-                      darkMode ? "text-green-200" : "text-green-800"
-                    }`}
-                  >
-                    Pedro Lima
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    1.100 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    3º
-                  </span>
-                </div>
-                {/* Usuário logado (exemplo) */}
-                <div
-                  className={`flex items-center gap-3 rounded-2xl shadow p-3 border transition-colors duration-300
-                  ${
-                    darkMode
-                      ? "bg-green-900 border-green-700"
-                      : "bg-green-50 border-green-200"
-                  }`}
-                >
-                  <img
-                    src="https://randomuser.me/api/portraits/men/99.jpg"
-                    alt="Você"
-                    className="w-10 h-10 rounded-full border-2 border-green-400"
-                  />
-                  <span
-                    className={`font-bold ${
-                      darkMode ? "text-green-200" : "text-green-700"
-                    }`}
-                  >
-                    Você
-                  </span>
-                  <span
-                    className={`ml-auto font-bold ${
-                      darkMode ? "text-green-400" : "text-green-600"
-                    }`}
-                  >
-                    950 pts
-                  </span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      darkMode ? "text-neutral-400" : "text-gray-400"
-                    }`}
-                  >
-                    4º
-                  </span>
-                </div>
+                      <span className="relative">
+                        <img
+                          src={item.foto}
+                          alt={item.nome}
+                          className={`w-14 h-14 rounded-full border-4 ${
+                            idx === 0
+                              ? "border-yellow-400 shadow-lg"
+                              : item.isUser
+                              ? darkMode
+                                ? "border-green-400"
+                                : "border-green-400"
+                              : "border-gray-200"
+                          }`}
+                        />
+                        {idx === 0 && (
+                          <span className="absolute -top-2 -right-2 bg-yellow-400 text-white font-bold rounded-full px-2 py-0.5 text-xs shadow">
+                            1º
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex flex-col">
+                        <span
+                          className={`font-bold text-lg ${
+                            darkMode ? "text-green-200" : "text-green-900"
+                          }`}
+                        >
+                          {item.isUser ? "Você" : item.nome}
+                        </span>
+                        <span
+                          className={`text-sm ${
+                            darkMode ? "text-green-400" : "text-green-700"
+                          }`}
+                        >
+                          {item.pontos} pts
+                        </span>
+                      </div>
+                      <span
+                        className={`ml-auto font-bold ${
+                          darkMode ? "text-green-400" : "text-green-600"
+                        }`}
+                      >
+                        {item.pontos} pts
+                      </span>
+                      <span
+                        className={`text-xs ml-2 ${
+                          darkMode ? "text-neutral-400" : "text-gray-400"
+                        }`}
+                      >
+                        {idx + 1}º
+                      </span>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -1726,24 +1650,24 @@ const App = () => {
             `}
             >
               <img
-                src="https://randomuser.me/api/portraits/men/99.jpg"
+                src={userData?.foto}
                 alt="Foto de perfil"
                 className={`w-28 h-28 rounded-full shadow-lg object-cover mb-2 border-4
-                  ${darkMode ? "border-green-700" : "border-green-400"}`}
+          ${darkMode ? "border-green-700" : "border-green-400"}`}
               />
               <span
                 className={`text-2xl font-bold ${
                   darkMode ? "text-green-200" : "text-green-800"
                 }`}
               >
-                Pablo Andrade
+                {userData?.nome || "Usuário"}
               </span>
               <span
                 className={`text-sm mb-2 ${
                   darkMode ? "text-green-400" : "text-green-600"
                 }`}
               >
-                @pablo.andrade
+                {userData?.email || user?.email || "sem email"}
               </span>
               <div className="flex gap-4 mt-2">
                 <div className="flex flex-col items-center">
@@ -1752,7 +1676,7 @@ const App = () => {
                       darkMode ? "text-green-300" : "text-green-700"
                     }`}
                   >
-                    2.350
+                    {userData?.pontos ?? 0}
                   </span>
                   <span
                     className={`text-xs ${
@@ -1768,7 +1692,7 @@ const App = () => {
                       darkMode ? "text-green-300" : "text-green-700"
                     }`}
                   >
-                    4
+                    {userData?.amigos?.length ?? 0}
                   </span>
                   <span
                     className={`text-xs ${
@@ -1784,7 +1708,7 @@ const App = () => {
                       darkMode ? "text-green-300" : "text-green-700"
                     }`}
                   >
-                    5
+                    {userData?.cupons?.length ?? 0}
                   </span>
                   <span
                     className={`text-xs ${
@@ -1824,62 +1748,25 @@ const App = () => {
                 Amigos
               </span>
               <div className="flex flex-wrap gap-4 justify-center">
-                <div className="flex flex-col items-center">
-                  <img
-                    src="https://randomuser.me/api/portraits/men/32.jpg"
-                    alt="Lucas"
-                    className="w-14 h-14 rounded-full border-2 border-yellow-400 shadow"
-                  />
-                  <span
-                    className={`font-semibold text-sm mt-1 ${
-                      darkMode ? "text-green-300" : "text-green-900"
-                    }`}
+                {userData?.amigos?.map((amigo) => (
+                  <div
+                    key={amigo.email || amigo.id || amigo.nome}
+                    className="flex flex-col items-center"
                   >
-                    Lucas Silva
-                  </span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <img
-                    src="https://randomuser.me/api/portraits/women/44.jpg"
-                    alt="Ana"
-                    className="w-14 h-14 rounded-full border-2 border-gray-200 shadow"
-                  />
-                  <span
-                    className={`font-semibold text-sm mt-1 ${
-                      darkMode ? "text-green-300" : "text-green-900"
-                    }`}
-                  >
-                    Ana Souza
-                  </span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <img
-                    src="https://randomuser.me/api/portraits/men/65.jpg"
-                    alt="Pedro"
-                    className="w-14 h-14 rounded-full border-2 border-gray-200 shadow"
-                  />
-                  <span
-                    className={`font-semibold text-sm mt-1 ${
-                      darkMode ? "text-green-300" : "text-green-900"
-                    }`}
-                  >
-                    Pedro Lima
-                  </span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <img
-                    src="https://randomuser.me/api/portraits/women/12.jpg"
-                    alt="Julia"
-                    className="w-14 h-14 rounded-full border-2 border-gray-200 shadow"
-                  />
-                  <span
-                    className={`font-semibold text-sm mt-1 ${
-                      darkMode ? "text-green-300" : "text-green-900"
-                    }`}
-                  >
-                    Julia Alves
-                  </span>
-                </div>
+                    <img
+                      src={amigo.foto}
+                      alt={amigo.nome}
+                      className="w-14 h-14 rounded-full border-2 border-gray-200 shadow"
+                    />
+                    <span
+                      className={`font-semibold text-sm mt-1 ${
+                        darkMode ? "text-green-300" : "text-green-900"
+                      }`}
+                    >
+                      {amigo.nome}
+                    </span>
+                  </div>
+                ))}
               </div>
               <button
                 className={`mt-2 font-bold shadow w-full text-base rounded-lg px-4 py-2 border
@@ -1934,33 +1821,6 @@ const App = () => {
             >
               Configurações
             </h2>
-            {/* Modo escuro */}
-            <div
-              className={`flex items-center justify-between py-3 border-b transition-colors duration-300 ${
-                darkMode ? "border-neutral-800" : "border-green-100"
-              }`}
-            >
-              <span
-                className={`font-medium transition-colors duration-300 ${
-                  darkMode ? "text-green-200" : "text-green-700"
-                }`}
-              >
-                Modo escuro
-              </span>
-              <button
-                className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${
-                  darkMode ? "bg-green-400" : "bg-green-200"
-                }`}
-                onClick={() => setDarkMode((v) => !v)}
-                aria-label="Alternar modo escuro"
-              >
-                <span
-                  className={`w-6 h-6 bg-white rounded-full shadow transform transition-transform duration-300 ${
-                    darkMode ? "translate-x-6" : ""
-                  }`}
-                ></span>
-              </button>
-            </div>
             {/* Notificações */}
             <div
               className={`flex items-center justify-between py-3 border-b transition-colors duration-300 ${
@@ -1999,6 +1859,37 @@ const App = () => {
               >
                 <option>Português</option>
                 <option>English</option>
+              </select>
+            </div>
+            {/* Tema */}
+            <div
+              className={`flex items-center justify-between py-3 border-b transition-colors duration-300 ${
+                darkMode ? "border-neutral-800" : "border-green-100"
+              }`}
+            >
+              <span className="font-medium">Tema</span>
+              <select
+                className={`rounded px-2 py-1 border transition-colors duration-300 ${
+                  darkMode
+                    ? "bg-neutral-800 border-neutral-700 text-green-200"
+                    : "bg-green-50 border-green-100 text-green-800"
+                }`}
+                value={themeMode}
+                onChange={(e) => {
+                  setThemeMode(e.target.value);
+                  if (e.target.value === "auto") {
+                    const isDark = window.matchMedia(
+                      "(prefers-color-scheme: dark)"
+                    ).matches;
+                    setDarkMode(isDark);
+                  } else {
+                    setDarkMode(e.target.value === "dark");
+                  }
+                }}
+              >
+                <option value="auto">Automático</option>
+                <option value="light">Claro</option>
+                <option value="dark">Escuro</option>
               </select>
             </div>
             {/* Suporte */}
@@ -2106,6 +1997,7 @@ const App = () => {
 
       {menuOpen && (
         <div className="absolute left-0 top-0 z-30 h-full w-3/4 max-w-xs p-1 pt-16 overflow-hidden">
+          {/* Menu lateral */}
           <ul className="space-y-7">
             {menuItems.map((item, index) => (
               <li
@@ -2123,10 +2015,7 @@ const App = () => {
                 style={{
                   transitionDelay: `${animateItems ? index * 30 : 0}ms`,
                 }}
-                onClick={() => {
-                  setActivePage(item.text);
-                  setMenuOpen(false);
-                }}
+                onClick={() => handleMenuItemClick(item)}
               >
                 <span
                   className={darkMode ? "text-green-300" : "text-green-700"}
